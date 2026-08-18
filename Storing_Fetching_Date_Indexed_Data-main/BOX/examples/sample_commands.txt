@@ -1,0 +1,10 @@
+# build and run demo
+make
+./bin/boxes demo
+
+# add sample entries
+./bin/boxes add static 2025-12-01 "Example payload 1"
+./bin/boxes add dynamic 2025-11-30 "Example payload 2"
+
+# fetch
+./bin/boxes get static 2025-12-01

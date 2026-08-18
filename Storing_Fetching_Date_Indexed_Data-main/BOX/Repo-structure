@@ -1,0 +1,13 @@
+static-vs-dynamic-boxes/
+├── README.md
+├── Makefile
+├── .gitignore
+├── LICENSE
+├── src/
+│   ├── main.cpp
+│   ├── box.h
+│   ├── box.cpp
+│   ├── date.h
+│   └── date.cpp
+└── examples/
+    └── sample_commands.txt
