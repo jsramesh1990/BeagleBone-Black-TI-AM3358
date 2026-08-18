@@ -1,0 +1,499 @@
+Yes — this is an important distinction. **`boot/` and `rootfs/` are not C++ project source directories.** They are deployment artifacts/filesystem areas that become part of the **BeagleBone Black SD-card image**.
+
+Also, the structure should be:
+
+```text
+deployment/sd-card/
+├── boot/
+└── rootfs/
+```
+
+**not**
+
+```text
+boot/
+└── rootfs/
+```
+
+They are two separate areas.
+
+## 1. Where do `boot/` and `rootfs/` come from?
+
+Your C++ project produces the application:
+
+```text
+app/src/*.cpp
+       |
+       v
+   cross compiler
+       |
+       v
+boxes              <-- ARM executable
+```
+
+But the BeagleBone cannot boot from `boxes` alone.
+
+It needs:
+
+```text
+Bootloader
+Linux Kernel
+Device Tree
+Root Filesystem
+Application
+```
+
+So the deployment process combines everything:
+
+```text
+C++ Source
+    |
+    v
+boxes executable
+    |
+    +--------------------+
+                         |
+Yocto / BSP              |
+    |                    |
+    +--> U-Boot          |
+    +--> Linux Kernel    |
+    +--> Device Tree     |
+    +--> RootFS          |
+                         |
+                         v
+                  SD Card Image
+                         |
+              +----------+----------+
+              |                     |
+              v                     v
+           BOOT                  ROOTFS
+```
+
+---
+
+# 2. What is `boot/`?
+
+`boot/` represents the **boot partition** of the SD card.
+
+For BeagleBone Black, conceptually:
+
+```text
+SD Card
+│
+├── BOOT partition
+│   │
+│   ├── MLO
+│   ├── u-boot.img
+│   ├── Image
+│   └── am335x-boneblack.dtb
+│
+└── ROOTFS partition
+    │
+    ├── bin/
+    ├── etc/
+    ├── lib/
+    ├── usr/
+    ├── var/
+    └── opt/
+```
+
+### Boot files
+
+| File                   | Purpose                      |
+| ---------------------- | ---------------------------- |
+| `MLO`                  | SPL / first-stage bootloader |
+| `u-boot.img`           | U-Boot bootloader            |
+| `Image`                | Linux kernel                 |
+| `am335x-boneblack.dtb` | Hardware description         |
+
+The exact filenames can vary depending on your BSP/build system.
+
+---
+
+# 3. What is `rootfs/`?
+
+`rootfs/` means **Root Filesystem**.
+
+This is the complete Linux filesystem that Linux mounts after the kernel starts.
+
+For example:
+
+```text
+rootfs/
+├── bin/
+├── boot/
+├── dev/
+├── etc/
+├── home/
+├── lib/
+├── media/
+├── mnt/
+├── opt/
+├── proc/
+├── root/
+├── run/
+├── sbin/
+├── sys/
+├── tmp/
+├── usr/
+└── var/
+```
+
+Your application gets installed inside this root filesystem.
+
+For example:
+
+```text
+rootfs/
+└── opt/
+    └── box-storage/
+        ├── bin/
+        │   └── boxes
+        │
+        └── config/
+            ├── boxes.conf
+            └── logging.conf
+```
+
+And your systemd service:
+
+```text
+rootfs/
+└── etc/
+    └── systemd/
+        └── system/
+            └── box-storage.service
+```
+
+---
+
+# 4. How does your project enter `rootfs`?
+
+This is the important part.
+
+Your source:
+
+```text
+app/
+├── include/
+├── src/
+└── tests/
+```
+
+gets compiled:
+
+```text
+Date.cpp
+Entry.cpp
+StaticBox.cpp
+DynamicBox.cpp
+BoxManager.cpp
+main.cpp
+             |
+             v
+      ARM cross compiler
+             |
+             v
+        boxes executable
+```
+
+Then installation:
+
+```text
+boxes
+  |
+  v
+rootfs/opt/box-storage/bin/boxes
+```
+
+Configuration:
+
+```text
+config/
+├── boxes.conf
+└── logging.conf
+        |
+        v
+rootfs/opt/box-storage/config/
+```
+
+Systemd:
+
+```text
+deployment/systemd/
+└── box-storage.service
+        |
+        v
+rootfs/etc/systemd/system/
+└── box-storage.service
+```
+
+So:
+
+```text
+                 YOUR PROJECT
+                     |
+       +-------------+-------------+
+       |             |             |
+       v             v             v
+     Source       Config       systemd
+       |             |             |
+       v             v             v
+    Compile        Copy          Copy
+       |             |             |
+       +-------------+-------------+
+                     |
+                     v
+                  ROOTFS
+                     |
+          +----------+----------+
+          |          |          |
+          v          v          v
+        /opt       /etc       /var
+       boxes      systemd     lib
+```
+
+---
+
+# 5. But where does the rest of rootfs come from?
+
+This is where **Yocto** comes in.
+
+You do **not** manually create:
+
+```text
+rootfs/bin
+rootfs/lib
+rootfs/usr
+rootfs/sbin
+```
+
+for a real embedded Linux project.
+
+Yocto creates them.
+
+Conceptually:
+
+```text
+Yocto
+  |
+  +-- BusyBox
+  +-- glibc
+  +-- Linux libraries
+  +-- systemd
+  +-- kernel modules
+  +-- configuration
+  +-- your application
+  |
+  v
+Complete RootFS
+```
+
+For your project:
+
+```text
+Yocto RootFS
+      |
+      +-- Standard Linux files
+      |
+      +-- systemd
+      |
+      +-- libraries
+      |
+      +-- box-storage application
+      |
+      +-- configuration
+      |
+      v
+rootfs/
+```
+
+---
+
+# 6. Where does `boot/` come from?
+
+Again, normally **Yocto/BSP generates it**.
+
+Conceptually:
+
+```text
+Yocto
+ |
+ +-- U-Boot
+ |     |
+ |     +-- MLO
+ |     +-- u-boot.img
+ |
+ +-- Linux Kernel
+ |     |
+ |     +-- Image
+ |
+ +-- Device Tree
+       |
+       +-- am335x-boneblack.dtb
+```
+
+Then these are assembled into the boot partition.
+
+So you shouldn't think:
+
+> "I need to manually write MLO and U-Boot."
+
+Instead think:
+
+> **"The BeagleBone BSP/Yocto build generates the boot artifacts, and my deployment process packages them into the SD-card image."**
+
+---
+
+# 7. Complete picture
+
+This is the architecture I recommend for your project:
+
+```text
+BeagleBone_Black-TI_AM3358/
+│
+├── app/                         ← YOUR C++ APPLICATION
+│   ├── include/
+│   ├── src/
+│   └── tests/
+│
+├── config/                      ← APPLICATION CONFIG
+│   ├── boxes.conf
+│   └── logging.conf
+│
+├── deployment/
+│   │
+│   ├── systemd/                ← SERVICE DEFINITION
+│   │   └── box-storage.service
+│   │
+│   └── sd-card/                ← SD DEPLOYMENT ARTIFACTS
+│       │
+│       ├── boot/               ← BOOT PARTITION
+│       │   ├── MLO
+│       │   ├── u-boot.img
+│       │   ├── Image
+│       │   └── am335x-boneblack.dtb
+│       │
+│       ├── rootfs/             ← ROOT FILESYSTEM
+│       │   ├── opt/
+│       │   │   └── box-storage/
+│       │   │       ├── bin/
+│       │   │       │   └── boxes
+│       │   │       └── config/
+│       │   │
+│       │   ├── etc/
+│       │   │   └── systemd/
+│       │   │       └── system/
+│       │   │           └── box-storage.service
+│       │   │
+│       │   └── var/
+│       │
+│       ├── deploy.sh
+│       └── README.md
+│
+├── Makefile
+└── README.md
+```
+
+---
+
+# 8. Then the SD card looks like this
+
+When you finally create the SD-card image:
+
+```text
+             BeagleBone Black SD CARD
+        ┌──────────────────────────────┐
+        │                              │
+        │  Partition 1: BOOT           │
+        │                              │
+        │  MLO                         │
+        │  u-boot.img                  │
+        │  Image                       │
+        │  am335x-boneblack.dtb        │
+        │                              │
+        ├──────────────────────────────┤
+        │                              │
+        │  Partition 2: ROOTFS         │
+        │                              │
+        │  /bin                        │
+        │  /etc                        │
+        │  /lib                        │
+        │  /usr                        │
+        │  /var                        │
+        │                              │
+        │  /opt/box-storage/           │
+        │      ├── bin/boxes           │
+        │      └── config/             │
+        │                              │
+        │  /etc/systemd/system/        │
+        │      └── box-storage.service │
+        │                              │
+        └──────────────────────────────┘
+```
+
+---
+
+# 9. And finally the boot process
+
+Now everything connects to the boot flow you were asking about earlier:
+
+```text
+Power ON
+   │
+   ▼
+TI AM3358 Boot ROM
+   │
+   ▼
+MLO / SPL
+   │
+   ▼
+U-Boot
+   │
+   ├── loads Linux Kernel
+   ├── loads Device Tree
+   │
+   ▼
+Linux Kernel
+   │
+   ▼
+Mount ROOTFS
+   │
+   ▼
+systemd
+   │
+   ▼
+box-storage.service
+   │
+   ▼
+/opt/box-storage/bin/boxes
+   │
+   ▼
+main()
+   │
+   ▼
+BoxManager
+   │
+   ├──────────────┐
+   ▼              ▼
+StaticBox     DynamicBox
+   │              │
+   └──────┬───────┘
+          ▼
+   Date Indexed Data
+```
+
+### The key concept
+
+**`boot/` = "How do I start Linux?"**
+
+**`rootfs/` = "Once Linux starts, what environment and applications do I have?"**
+
+**`app/` = "What did we develop?"**
+
+**`config/` = "How should our application behave?"**
+
+**`deployment/` = "How do we put everything onto the BeagleBone?"**
+
+And **Yocto is the system that ultimately brings the BSP, kernel, bootloader, root filesystem, and your application together into a deployable image.**
+

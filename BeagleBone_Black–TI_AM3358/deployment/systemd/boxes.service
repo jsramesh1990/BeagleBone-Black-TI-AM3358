@@ -1,0 +1,22 @@
+[Unit]
+Description=Box Storage System
+After=local-fs.target
+
+[Service]
+Type=simple
+
+ExecStart=/opt/boxes/bin/boxes demo
+
+WorkingDirectory=/opt/boxes
+
+Restart=on-failure
+RestartSec=5
+
+Environment=BOXES_CONFIG=/opt/boxes/config/boxes.conf
+Environment=BOXES_LOG_CONFIG=/opt/boxes/config/logging.conf
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

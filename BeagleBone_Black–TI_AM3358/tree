@@ -1,0 +1,73 @@
+BeagleBone_Black–TI_AM3358
+│
+├── README.md
+├── LICENSE
+├── Makefile
+├── CMakeLists.txt
+│
+├── app/
+│   ├── include/
+│   │   ├── Date.hpp
+│   │   ├── Entry.hpp
+│   │   ├── StaticBox.hpp
+│   │   ├── DynamicBox.hpp
+│   │   └── BoxManager.hpp
+│   │
+│   ├── src/
+│   │   ├── Date.cpp
+│   │   ├── Entry.cpp
+│   │   ├── StaticBox.cpp
+│   │   ├── DynamicBox.cpp
+│   │   ├── BoxManager.cpp
+│   │   └── main.cpp
+│   │
+│   └── tests/
+│       ├── test_date.cpp
+│       ├── test_static_box.cpp
+│       ├── test_dynamic_box.cpp
+│       └── test_range_query.cpp
+│
+├── config/
+│   ├── boxes.conf
+│   └── logging.conf
+│
+├── scripts/
+│   ├── build.sh
+│   ├── clean.sh
+│   ├── deploy.sh
+│   ├── run.sh
+│   ├── test.sh
+│   └── flash_sd.sh
+│
+├── yocto/
+│   ├── meta-box-storage/
+│   │   ├── conf/
+│   │   │   └── layer.conf
+│   │   │
+│   │   ├── recipes-box/
+│   │   │   └── box-storage/
+│   │   │       ├── box-storage_1.0.bb
+│   │   │       └── files/
+│   │   │
+│   │   └── README.md
+│   │
+│   └── README.md
+│
+├── deployment/
+│   ├── sd-card/
+│   ├── emmc/
+│   └── systemd/
+│       └── box-storage.service
+│
+├── docs/
+│   ├── architecture.md
+│   ├── build_flow.md
+│   ├── boot_flow.md
+│   ├── storage_flow.md
+│   ├── testing.md
+│   └── debugging.md
+│
+└── output/
+    ├── host/
+    ├── target/
+    └── logs/
