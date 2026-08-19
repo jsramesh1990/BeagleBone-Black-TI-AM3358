@@ -1,5 +1,4 @@
 
-
 # BeagleBone Black – TI AM3358
 
 ## Date-Indexed Box Storage System
@@ -7,6 +6,17 @@
 > Embedded Linux C++ storage application deployed on the BeagleBone Black using the TI AM3358 processor, with CMake/Make-based development, Yocto integration, systemd service management, SD-card deployment, and automated testing.
 
 ---
+
+## Complete BeagleBone Black System Flow
+
+The following animation illustrates the complete BeagleBone Black based on the TI AM3358 execution flow, from power-on, ROM boot, SPL and U-Boot through the Linux kernel, Device Tree, kernel drivers, userspace, and application-level peripheral access.
+
+<p align="center">
+  <img src="images/BBB-TI%20AM3358.gif"
+       alt="BeagleBone Black TI AM3358 Complete System Flow"
+       width="950">
+</p>
+
 
 ## 1. Project Overview
 
